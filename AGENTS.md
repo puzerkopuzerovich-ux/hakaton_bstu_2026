@@ -3,9 +3,7 @@
 Стек: HTML, CSS, JS, ReactJS
 
 1. Всё в розовых цветах
-<<<<<<< HEAD
-
-
+2.fghfgh
 
 
 #backend 
