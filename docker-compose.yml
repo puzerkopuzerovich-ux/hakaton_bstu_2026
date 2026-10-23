@@ -1,0 +1,85 @@
+services:
+  nginx:
+    image: public.ecr.aws/docker/library/nginx:alpine
+    container_name: m-social-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: m-social-backend
+    environment:
+      - APP_ENV=local
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=msocial
+      - DB_USERNAME=msocial_user
+      - DB_PASSWORD=msocial_secret
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PENALTY_AR_PER_MINUTE=20
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/vendor
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  cron-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: m-social-worker
+    environment:
+      - APP_ENV=local
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=msocial
+      - DB_USERNAME=msocial_user
+      - DB_PASSWORD=msocial_secret
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PENALTY_AR_PER_MINUTE=20
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/vendor
+    command: sh -c "while true; do php /var/www/html/src/core/tasks/penalty_ticker.php; sleep 60; done"
+    depends_on:
+      - backend
+
+  postgres:
+    image: public.ecr.aws/docker/library/postgres:15-alpine
+    container_name: m-social-postgres
+    environment:
+      POSTGRES_DB: msocial
+      POSTGRES_USER: msocial_user
+      POSTGRES_PASSWORD: msocial_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U msocial_user -d msocial"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: public.ecr.aws/docker/library/redis:7-alpine
+    container_name: m-social-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
