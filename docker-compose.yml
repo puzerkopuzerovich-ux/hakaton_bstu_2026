@@ -28,35 +28,11 @@ services:
       - PENALTY_AR_PER_MINUTE=20
     volumes:
       - .:/var/www/html
-      - /var/www/html/vendor
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_started
-
-  cron-worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: m-social-worker
-    environment:
-      - APP_ENV=local
-      - DB_CONNECTION=pgsql
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_DATABASE=msocial
-      - DB_USERNAME=msocial_user
-      - DB_PASSWORD=msocial_secret
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - PENALTY_AR_PER_MINUTE=20
-    volumes:
-      - .:/var/www/html
-      - /var/www/html/vendor
-    command: sh -c "while true; do php /var/www/html/src/core/tasks/penalty_ticker.php; sleep 60; done"
-    depends_on:
-      - backend
 
   postgres:
     image: public.ecr.aws/docker/library/postgres:15-alpine
